@@ -14,6 +14,7 @@ struct SwitchCheck {
         ]
         var report: [String] = []
         for (index, step) in steps.enumerated() {
+            guard surface.isFrontmost(window) else { return report + ["ABORTED: target lost focus"] }
             surface.clear()
             surface.focus(in: window)
             if step.switchFirst {

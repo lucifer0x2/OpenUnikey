@@ -12,8 +12,9 @@ phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. C
 - Kiểm tra chính tả và tự khôi phục từ không phải tiếng Việt (`windows`, `text`)
 - Biểu tượng V/E trên thanh menu; nhấp trái để chuyển, nhấp phải để mở menu
 - Phím chuyển V/E: Control + Shift (nhấn rồi thả) hoặc Option + Z
-- Sửa lỗi gợi ý trên thanh địa chỉ trình duyệt: Shift+← với Chrome, Edge, Arc, Brave;
-  ký tự đệm với Safari, Firefox
+- Sửa lỗi gợi ý trên thanh địa chỉ trình duyệt bằng ký tự đệm (Chrome, Edge, Arc, Brave,
+  Safari, Firefox…)
+- Beta: nút chuột 4/5 chuyển Space phải/trái (bật trong Tuỳ chọn)
 - Khởi động cùng macOS
 
 ## Cấu trúc
@@ -87,6 +88,23 @@ scripts/run-harness.sh --interrupt 3 --corpus "$PWD/Tests/Corpus/wiki-Phở.txt"
 ```
 
 Harness gõ vào cửa sổ riêng (AppKit hoặc WebKit với `--web`) và dừng ngay khi mất focus.
+Để thử trong Chromium, mở một phiên Chrome riêng (profile tạm) rồi gõ vào đó:
+
+```bash
+PID=$(scripts/chromium-test-page.sh prosemirror)   # hoặc textarea, editable
+scripts/run-harness.sh --external "$PID" --corpus "$PWD/Tests/Corpus/wiki-Phở.txt"
+kill "$PID"
+```
+
+`--switch-check` kiểm tra Control+Shift, `--mouse-check` kiểm tra nút chuột 4/5.
+`--hid` gửi phím qua tầng HID như bàn phím thật, `--hold MS` giữ mỗi phím một lúc.
+
+Lỗi chỉ gặp khi gõ tay thì bật log phím (tự tắt sau 10 phút) rồi đọc lại:
+
+```bash
+defaults write io.github.openunikey keyLogging -bool true   # rồi mở lại app
+/usr/bin/log show --last 10m --predicate 'subsystem == "io.github.openunikey" && category == "keys"'
+```
 
 ## Giấy phép
 

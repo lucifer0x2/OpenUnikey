@@ -8,7 +8,6 @@ namespace vk {
 namespace {
 
 constexpr CGKeyCode kBackspaceKey = 51;  // kVK_Delete
-constexpr CGKeyCode kLeftArrowKey = 123; // kVK_LeftArrow
 constexpr CGKeyCode kTextKey = 0;        // any key; the Unicode payload wins
 constexpr UniChar kAutocompleteFiller = 0x202F; // narrow no-break space
 constexpr int kMaxCharsPerEvent = 16;   // longer strings are split
@@ -66,11 +65,6 @@ void KeySender::replace(CGEventTapProxy proxy, int backs, const uint16_t* chars,
         // Replaces a selected suggestion, then gets deleted with the word.
         postText(proxy, &kAutocompleteFiller, 1);
         backs++;
-    } else if (backs > 0 && fix == VK_AUTOCOMPLETE_SELECT_LEFT) {
-        // Selecting dismisses the suggestion; the selection then counts as
-        // the first deleted character.
-        postKey(proxy, kLeftArrowKey, kCGEventFlagMaskShift);
-        if (backs == 1) backs = 0; // the typed text replaces the selection
     }
     for (int i = 0; i < backs; i++) postKey(proxy, kBackspaceKey, 0);
     if (count > 0) postText(proxy, chars, count);

@@ -45,6 +45,7 @@ final class Preferences {
         static let browserFix = "browserFix"
         static let switchKey = "switchKey"
         static let clickToToggle = "clickToToggle"
+        static let mouseSwitchesSpaces = "mouseSwitchesSpaces"
     }
 
     private let defaults = UserDefaults.standard
@@ -61,6 +62,7 @@ final class Preferences {
             Key.browserFix: true,
             Key.switchKey: SwitchKey.controlShift.rawValue,
             Key.clickToToggle: true,
+            Key.mouseSwitchesSpaces: false,
         ])
     }
 
@@ -103,6 +105,11 @@ final class Preferences {
     var clickToToggle: Bool {
         get { defaults.bool(forKey: Key.clickToToggle) }
         set { defaults.set(newValue, forKey: Key.clickToToggle) }
+    }
+    /// Beta: mouse buttons 4/5 switch to the Space on the right/left.
+    var mouseSwitchesSpaces: Bool {
+        get { defaults.bool(forKey: Key.mouseSwitchesSpaces) }
+        set { defaults.set(newValue, forKey: Key.mouseSwitchesSpaces) }
     }
 
     /// Pushes every typing setting to the core.

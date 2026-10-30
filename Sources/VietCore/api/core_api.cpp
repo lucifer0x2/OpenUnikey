@@ -2,6 +2,7 @@
 #include "VietCore.h"
 
 #include "engine/engine.hpp"
+#include "tap/key_log.hpp"
 #include "tap/shared_state.hpp"
 
 namespace vk {
@@ -70,6 +71,8 @@ void vk_set_switch_key(VKSwitchKey key) { sharedState().switchKey.store(key); }
 void vk_set_autocomplete_fix(VKAutocompleteFix fix) { sharedState().autocompleteFix.store(fix); }
 
 void vk_reset(void) { sharedState().resetRequested.store(true); }
+
+void vk_set_key_logging(bool enabled) { vk::setKeyLogEnabled(enabled); }
 
 void vk_set_mode_callback(VKModeCallback callback, void* context) {
     sharedState().modeContext.store(context);

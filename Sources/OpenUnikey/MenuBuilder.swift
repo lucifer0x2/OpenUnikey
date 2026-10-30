@@ -73,7 +73,7 @@ struct MenuBuilder {
     }
 
     private func optionsMenu() -> NSMenuItem {
-        let items: [NSMenuItem] = [
+        var items: [NSMenuItem] = [
             toggle("Bỏ dấu kiểu mới (oà, uý)", \.modernStyle),
             toggle("Cho phép bỏ dấu tự do", \.freeMarking),
             toggle("Kiểm tra chính tả tiếng Việt", \.spellCheck),
@@ -82,7 +82,12 @@ struct MenuBuilder {
             .separator(),
             toggle("Sửa lỗi gợi ý trên thanh địa chỉ trình duyệt", \.browserFix),
             toggle("Nhấp chuột trái vào V/E để chuyển nhanh", \.clickToToggle),
+            .separator(),
+            toggle("Nút chuột 4/5 chuyển Space phải/trái (beta)", \.mouseSwitchesSpaces),
         ]
+        if prefs.mouseSwitchesSpaces && MouseToolDetector.isOtherMouseToolRunning {
+            items.append(.hint("Mac Mouse Fix đang chạy, có thể xử lý trùng nút 4/5"))
+        }
         return .submenu("Tuỳ chọn", symbol: "slider.horizontal.3", items: items)
     }
 

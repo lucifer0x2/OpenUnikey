@@ -5,12 +5,16 @@ import VietCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
     private let prefs = Preferences()
-    private lazy var tapSupervisor = TapSupervisor { [weak self] in self?.statusItem?.refresh() }
+    private lazy var tapSupervisor = TapSupervisor(
+        wantsMouseTap: { [prefs] in prefs.mouseSwitchesSpaces },
+        onChange: { [weak self] in self?.statusItem?.refresh() }
+    )
     private let frontmost = FrontmostAppObserver()
     private var statusItem: StatusItemController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         prefs.applyToCore()
+        KeyLogSwitch.applyAtLaunch()
         ModeBridge.install { [weak self] vietnamese in self?.modeSwitchedByHotkey(vietnamese) }
 
         statusItem = StatusItemController(
@@ -46,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
     func preferencesChanged() {
         prefs.applyToCore()
         updateAutocompleteFix()
+        tapSupervisor.reconcile() // the mouse tap follows its setting
         statusItem?.refresh()
     }
 

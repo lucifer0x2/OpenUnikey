@@ -97,14 +97,16 @@ struct TelexTests {
         #expect(typed("text\n") == "text\n")
     }
 
-    /// "ss", "rr", "ff" undo a tone in Telex, which ate a letter of foreign
-    /// words; they are restored at the word end unless the undo was the last key.
+    /// A doubled tone key is Telex undo: the letter stays once and the word
+    /// keeps what the screen shows at its end, as in UniKey ("pussh" is "push").
     @Test(arguments: [
-        ("Kissinger ", "Kissinger "), ("Pierre,", "Pierre,"), ("truffle\n", "truffle\n"),
-        ("Harrison.", "Harrison."), ("ass ", "as "), ("tooo ", "too "),
-        ("Kiss \u{8}inger ", "Kissinger "), ("Ha \u{8}rry ", "Harry "),
+        ("pussh ", "push "), ("urrl ", "url "), ("tesst ", "test "), ("urrl\n", "url\n"),
+        ("pussh,", "push,"), ("ass ", "as "), ("tooo ", "too "), ("Kissinger ", "Kisinger "),
+        // deleting the word must not glue the next one to the word before
+        ("vaf pussh \u{8}\u{8}\u{8}\u{8}\u{8}push ", "và push "),
+        ("vaf pussh \u{8}\u{8}\u{8}\u{8}\u{8}\u{8}\u{8}af ", "và "),
     ])
-    func foreignWordsKeepDoubledLetters(keys: String, expected: String) {
+    func doubledToneKeyStaysUndone(keys: String, expected: String) {
         #expect(typed(keys) == expected)
     }
 

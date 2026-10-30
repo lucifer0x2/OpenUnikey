@@ -3,8 +3,8 @@ import ApplicationServices
 import os
 import VietCore
 
-/// Keeps the keyboard event tap running only while the app holds the
-/// Accessibility permission.
+/// Keeps the event taps (keyboard, and the beta mouse tap when enabled)
+/// running only while the app holds the Accessibility permission.
 ///
 /// A tap left running after the permission is revoked (or after a rebuild no
 /// longer matches the granted entry) stops receiving events, and WindowServer
@@ -16,12 +16,14 @@ final class TapSupervisor {
     private var observer: NSObjectProtocol?
     private var clickMonitor: Any?
     private let onChange: () -> Void
+    private let wantsMouseTap: () -> Bool
     private let log = Logger(subsystem: "io.github.openunikey", category: "tap")
     private var lastTrusted: Bool?
 
     var isTrusted: Bool { AXIsProcessTrusted() }
 
-    init(onChange: @escaping () -> Void) {
+    init(wantsMouseTap: @escaping () -> Bool, onChange: @escaping () -> Void) {
+        self.wantsMouseTap = wantsMouseTap
         self.onChange = onChange
     }
 
@@ -54,12 +56,13 @@ final class TapSupervisor {
         timer?.invalidate()
         if let observer { DistributedNotificationCenter.default().removeObserver(observer) }
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
+        vk_mouse_tap_stop()
         vk_tap_stop()
     }
 
     /// Stops the tap without trust, starts it with trust (vk_tap_start also
     /// refuses for a short cooldown after the tap gave up on timeouts).
-    private func reconcile() {
+    func reconcile() {
         let wasRunning = vk_tap_running()
         let trusted = isTrusted
         let lostTrust = lastTrusted == true && !trusted
@@ -68,10 +71,12 @@ final class TapSupervisor {
             lastTrusted = trusted
         }
         if lostTrust {
+            vk_mouse_tap_stop()
             vk_tap_stop()
             relaunch()
             return
         }
+        reconcileMouseTap(trusted: trusted)
         if !trusted {
             if wasRunning {
                 vk_tap_stop()
@@ -81,6 +86,15 @@ final class TapSupervisor {
             _ = vk_tap_start() // logs why when it cannot start
         }
         if vk_tap_running() != wasRunning { onChange() }
+    }
+
+    private func reconcileMouseTap(trusted: Bool) {
+        let wanted = trusted && wantsMouseTap()
+        if wanted && !vk_mouse_tap_running() {
+            _ = vk_mouse_tap_start() // logs why when it cannot start
+        } else if !wanted && vk_mouse_tap_running() {
+            vk_mouse_tap_stop()
+        }
     }
 
     /// Once a running process has lost the permission, AXIsProcessTrusted()

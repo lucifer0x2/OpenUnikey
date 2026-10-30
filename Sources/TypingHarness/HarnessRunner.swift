@@ -5,9 +5,13 @@ struct HarnessConfig {
     var corpus: [String] = []
     var limit = 15
     var delay: TimeInterval = 0.008
+    var hold: TimeInterval = 0
+    var hid = false
     var settle: TimeInterval = 0.4
     var web = false
     var switchCheck = false
+    var mouseCheck = false
+    var externalPID: pid_t?
     var encoder = KeystrokeEncoder()
     var out = FileManager.default.temporaryDirectory.appendingPathComponent("typing-harness.txt").path
 }
@@ -33,7 +37,11 @@ final class HarnessRunner {
 
     init(config: HarnessConfig) {
         self.config = config
-        surface = config.web ? WebSurface() : NativeSurface()
+        if let pid = config.externalPID {
+            surface = ExternalSurface(pid: pid)
+        } else {
+            surface = config.web ? WebSurface() : NativeSurface()
+        }
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
                           styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.title = "OpenUnikey typing harness - do not touch the keyboard"
@@ -47,15 +55,24 @@ final class HarnessRunner {
             finish("NO PERMISSION: allow TypingHarness in Privacy & Security > Accessibility, then run again.")
             return
         }
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.didResignActiveNotification, object: nil, queue: nil
-        ) { [focus] _ in focus.markLost() }
+        await surface.bringToFront(window)
+        // Key events go to whatever app is in front: never type into the wrong one.
+        guard surface.isFrontmost(window) else {
+            let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+            return finish("ABORTED: target is not the active app (front: \(front)); nothing typed.")
+        }
+        surface.watchFocusLoss(focus)
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        try? await Task.sleep(for: .seconds(1.5)) // window, web page and focus settle
-
-        let poster = KeyPoster(delay: config.delay)
+        var poster = KeyPoster(delay: config.delay)
+        poster.hold = config.hold
+        if config.hid {
+            guard let hid = HIDKeyPoster() else { return finish("ABORTED: cannot open the HID system.") }
+            poster.hid = hid
+        }
+        if config.mouseCheck { // switching Spaces takes focus away, so no focus guard
+            report = await MouseCheck(window: window, poster: poster).run()
+            return finish("DONE")
+        }
         if config.switchCheck {
             report = await SwitchCheck(surface: surface, window: window, poster: poster).run()
             return finish(focus.isLost ? "ABORTED: harness lost focus." : "DONE")
@@ -65,7 +82,9 @@ final class HarnessRunner {
             let raw = (try? String(contentsOfFile: file, encoding: .utf8)) ?? ""
             var check = TypingCheck()
             for line in CorpusText.lines(from: raw).prefix(config.limit) {
-                guard !focus.isLost else { return finish("ABORTED: harness lost focus.") }
+                guard !focus.isLost, surface.isFrontmost(window) else {
+                    return finish("ABORTED: target lost focus.")
+                }
                 surface.clear()
                 surface.focus(in: window)
                 let keys = config.encoder.keys(for: line) + " " // the space ends the last word
@@ -83,7 +102,7 @@ final class HarnessRunner {
         for m in total.mismatches.prefix(80) {
             report.append("  line \(m.line): \(m.expected) -> \(m.actual)   keys: \(m.keys)")
         }
-        finish(focus.isLost ? "ABORTED: harness lost focus." : "DONE")
+        finish(focus.isLost ? "ABORTED: target lost focus." : "DONE")
     }
 
     private func summary(_ name: String, _ check: TypingCheck) -> String {
@@ -92,9 +111,10 @@ final class HarnessRunner {
     }
 
     private func finish(_ status: String) {
-        let surfaceName = config.web ? "web" : "native"
+        let surfaceName = config.externalPID.map { "external pid \($0)" } ?? (config.web ? "web" : "native")
         let header = "surface=\(surfaceName) method=\(config.encoder.method.rawValue) "
-            + "tone=\(config.encoder.toneStyle.rawValue) delay=\(Int(config.delay * 1000))ms"
+            + "tone=\(config.encoder.toneStyle.rawValue) delay=\(Int(config.delay * 1000))ms hold=\(Int(config.hold * 1000))ms"
+            + (config.hid ? " via=hid" : "")
         let text = ([status, header] + report).joined(separator: "\n") + "\n"
         try? text.write(toFile: config.out, atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
