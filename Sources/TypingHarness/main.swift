@@ -11,6 +11,8 @@ import TypingKit
 //     --method telex|vni --tone end|vowel --compact-horn
 //     --interrupt N      every Nth word: type a space mid-word, delete it, go on
 //     --switch-check     only test the Control+Shift V/E switch (no corpus needed)
+//     --mouse-check      only test mouse buttons 4/5 switching Spaces (beta feature
+//                        must be on; needs a Space on at least one side)
 //     --out PATH         report file (default $TMPDIR/typing-harness.txt)
 //
 // OpenUnikey must be running in V mode with the same input method.
@@ -25,6 +27,7 @@ while let arg = args.next() {
     case "--delay": config.delay = (Double(args.next() ?? "") ?? 8) / 1000
     case "--web": config.web = true
     case "--switch-check": config.switchCheck = true
+    case "--mouse-check": config.mouseCheck = true
     case "--method": config.encoder.method = .init(rawValue: args.next() ?? "") ?? .telex
     case "--tone": config.encoder.toneStyle = args.next() == "vowel" ? .afterVowel : .endOfWord
     case "--compact-horn": config.encoder.compactHorn = true

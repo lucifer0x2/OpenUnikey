@@ -8,6 +8,7 @@ struct HarnessConfig {
     var settle: TimeInterval = 0.4
     var web = false
     var switchCheck = false
+    var mouseCheck = false
     var encoder = KeystrokeEncoder()
     var out = FileManager.default.temporaryDirectory.appendingPathComponent("typing-harness.txt").path
 }
@@ -54,8 +55,17 @@ final class HarnessRunner {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         try? await Task.sleep(for: .seconds(1.5)) // window, web page and focus settle
+        // Key events go to whatever app is in front: never type unless it is us.
+        guard NSApp.isActive, window.isKeyWindow else {
+            let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+            return finish("ABORTED: harness is not the active app (front: \(front)); nothing typed.")
+        }
 
         let poster = KeyPoster(delay: config.delay)
+        if config.mouseCheck { // switching Spaces takes focus away, so no focus guard
+            report = await MouseCheck(window: window, poster: poster).run()
+            return finish("DONE")
+        }
         if config.switchCheck {
             report = await SwitchCheck(surface: surface, window: window, poster: poster).run()
             return finish(focus.isLost ? "ABORTED: harness lost focus." : "DONE")
@@ -65,7 +75,7 @@ final class HarnessRunner {
             let raw = (try? String(contentsOfFile: file, encoding: .utf8)) ?? ""
             var check = TypingCheck()
             for line in CorpusText.lines(from: raw).prefix(config.limit) {
-                guard !focus.isLost else { return finish("ABORTED: harness lost focus.") }
+                guard !focus.isLost, NSApp.isActive else { return finish("ABORTED: harness lost focus.") }
                 surface.clear()
                 surface.focus(in: window)
                 let keys = config.encoder.keys(for: line) + " " // the space ends the last word

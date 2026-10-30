@@ -45,6 +45,21 @@ struct KeyPoster: @unchecked Sendable { // only used from one thread at a time
         }
     }
 
+    /// Clicks mouse button `number` (0-based: 3 = "button 4", 4 = "button 5")
+    /// where the pointer is.
+    func clickMouseButton(_ number: Int64) {
+        let location = CGEvent(source: nil)?.location ?? .zero
+        let button = CGMouseButton(rawValue: UInt32(number)) ?? .center
+        for type in [CGEventType.otherMouseDown, .otherMouseUp] {
+            guard let event = CGEvent(mouseEventSource: source, mouseType: type,
+                                      mouseCursorPosition: location, mouseButton: button)
+            else { continue }
+            event.setIntegerValueField(.mouseEventButtonNumber, value: number)
+            event.post(tap: .cghidEventTap)
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+    }
+
     private func post(_ code: CGKeyCode, down: Bool, flags: CGEventFlags, text: String? = nil) {
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
         else { return }

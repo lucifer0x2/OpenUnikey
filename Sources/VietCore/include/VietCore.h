@@ -48,6 +48,12 @@ bool vk_tap_start(void);
 void vk_tap_stop(void);
 bool vk_tap_running(void);
 
+// ---- Beta: mouse side buttons switch Spaces (button 4 right, button 5 left) ----
+// A separate tap that only sees "other" mouse buttons; same permission.
+bool vk_mouse_tap_start(void);
+void vk_mouse_tap_stop(void);
+bool vk_mouse_tap_running(void);
+
 // ---- Standalone engine, used by tests ----
 typedef struct VKEngine VKEngine;
 VKEngine *vk_engine_create(const VKOptions *options);

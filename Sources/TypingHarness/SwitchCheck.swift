@@ -14,6 +14,7 @@ struct SwitchCheck {
         ]
         var report: [String] = []
         for (index, step) in steps.enumerated() {
+            guard NSApp.isActive else { return report + ["ABORTED: harness lost focus"] }
             surface.clear()
             surface.focus(in: window)
             if step.switchFirst {
