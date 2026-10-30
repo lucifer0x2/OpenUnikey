@@ -23,14 +23,4 @@ void WordTracker::onKey(uint8_t key, int backs, const uint16_t* output, int coun
     shown_.append(output, output + count);
 }
 
-bool WordTracker::shouldRestore() const {
-    if (!valid_ || shown_.size() < 2 || keys_.size() <= shown_.size()) return false;
-    for (char16_t ch : shown_) {
-        const bool asciiLetter = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
-        if (!asciiLetter) return false; // still Vietnamese, or not a word
-    }
-    const std::u16string allButLastKey(keys_.begin(), keys_.end() - 1);
-    return allButLastKey != shown_;
-}
-
 } // namespace vk

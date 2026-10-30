@@ -87,7 +87,6 @@ void Engine::configure(const Options& options) {
     o.modernStyle = options.modernStyle;
     o.spellCheckEnabled = options.spellCheck;
     o.autoNonVnRestore = options.autoRestore;
-    restoreForeignWords_ = options.spellCheck && options.autoRestore;
     digitsAreKeys_ = options.method == InputMethod::Vni;
     reset();
 }
@@ -112,7 +111,6 @@ void Engine::process(uint8_t ch, bool shift, bool capsLock) {
         tracker_.onKey(ch, backs_, output_, outputLength_);
         return;
     }
-    restoreForeignWord(ch);
     rememberRestoredWord();
     previousWord_ = tracker_;
     previousWordArmed_ = !restored_.armed;
@@ -143,7 +141,6 @@ void Engine::endWord() {
     restored_.armed = false;
     previousWordArmed_ = false;
     runEngine(0);
-    restoreForeignWord(0);
     tracker_.reset();
 }
 
@@ -155,18 +152,7 @@ void Engine::runEngine(unsigned int keyCode) {
     takeResult(backs, impl_->raw, size);
 }
 
-// Called at a word break the engine let through: puts back the typed keys of
-// a foreign word that Telex undo shortened, followed by the break char.
-void Engine::restoreForeignWord(uint8_t breakChar) {
-    if (!restoreForeignWords_ || backs_ != 0 || outputLength_ != 0) return;
-    if ((int)tracker_.keys().size() + 1 > kMaxOutput || !tracker_.shouldRestore()) return;
-    backs_ = tracker_.shownLength();
-    outputLength_ = 0;
-    for (char key : tracker_.keys()) output_[outputLength_++] = (uint8_t)key;
-    if (breakChar) output_[outputLength_++] = breakChar;
-}
-
-// A word break that rewrote the word (ukengine or restoreForeignWord) restored
+// A word break that rewrote the word (ukengine's non-Vietnamese restore) restored
 // it to its keys; remember how to bring the typed form back.
 void Engine::rememberRestoredWord() {
     if (backs_ == 0 || !tracker_.isValid()) return;

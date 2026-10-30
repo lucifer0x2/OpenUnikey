@@ -1,4 +1,5 @@
 import CoreGraphics
+import IOKit.hidsystem
 import Foundation
 import TypingKit
 
@@ -8,6 +9,10 @@ struct KeyPoster: @unchecked Sendable { // only used from one thread at a time
     private static let shiftKey: CGKeyCode = 56
     private let source = CGEventSource(stateID: .hidSystemState)
     let delay: TimeInterval
+    /// How long each key stays down, like a finger on a real keyboard.
+    var hold: TimeInterval = 0
+    /// Types through the HID system instead of CGEventPost (see HIDKeyPoster).
+    var hid: HIDKeyPoster?
 
     static var hasPermission: Bool { CGPreflightPostEventAccess() }
     static func requestPermission() { _ = CGRequestPostEventAccess() }
@@ -17,14 +22,35 @@ struct KeyPoster: @unchecked Sendable { // only used from one thread at a time
     func type(_ keys: String) {
         for ch in keys {
             guard let key = KeyboardLayout.key(for: ch) else { continue }
+            if let hid {
+                typeThroughHID(hid, code: UInt16(key.code), shift: key.shift, char: ch)
+                continue
+            }
             if key.shift { post(Self.shiftKey, down: true, flags: .maskShift) }
             let text = (ch == "\n" || ch == "\u{8}") ? nil : String(ch)
             let flags: CGEventFlags = key.shift ? .maskShift : []
             post(CGKeyCode(key.code), down: true, flags: flags, text: text)
+            if hold > 0 { Thread.sleep(forTimeInterval: hold) }
             post(CGKeyCode(key.code), down: false, flags: flags, text: text)
             if key.shift { post(Self.shiftKey, down: false, flags: []) }
             Thread.sleep(forTimeInterval: delay)
         }
+    }
+
+    private func typeThroughHID(_ hid: HIDKeyPoster, code: UInt16, shift: Bool, char: Character) {
+        let unit = char.utf16.first ?? 0
+        let flags = shift ? UInt32(NX_SHIFTMASK) : 0
+        _ = hid.key(code, down: true, char: unit, flags: flags)
+        if hold > 0 { Thread.sleep(forTimeInterval: hold) }
+        _ = hid.key(code, down: false, char: unit, flags: flags)
+        Thread.sleep(forTimeInterval: delay)
+    }
+
+    /// Presses one key with modifiers, e.g. Command+A.
+    func press(_ code: CGKeyCode, flags: CGEventFlags) {
+        post(code, down: true, flags: flags)
+        post(code, down: false, flags: flags)
+        Thread.sleep(forTimeInterval: delay)
     }
 
     /// Presses and releases Control+Shift with nothing else, like a person

@@ -1,6 +1,7 @@
 // OpenUnikey - Vietnamese input for macOS. GPL v2 or later.
 #include "tap/tap_session.hpp"
 
+#include "tap/key_log.hpp"
 #include "tap/shared_state.hpp"
 
 namespace vk {
@@ -26,10 +27,17 @@ bool readPrintableAscii(CGEventRef event, uint8_t& out) {
 } // namespace
 
 CGEventRef TapSession::handle(CGEventTapProxy proxy, CGEventType type, CGEventRef event) {
-    if (sender_.isOwnEvent(event)) return event;
+    if (sender_.isOwnEvent(event)) {
+        logKeyEvent(event, type, "own", 0, nullptr, 0);
+        return event;
+    }
     switch (type) {
-    case kCGEventKeyDown:
-        return handleKeyDown(proxy, event);
+    case kCGEventKeyDown: {
+        CGEventRef result = handleKeyDown(proxy, event);
+        logKeyEvent(event, type, result ? "pass" : "rewrite", engine_.backs(), engine_.output(),
+                    engine_.outputLength());
+        return result;
+    }
     case kCGEventFlagsChanged:
         handleFlagsChanged(event);
         return event;

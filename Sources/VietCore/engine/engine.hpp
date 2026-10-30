@@ -48,7 +48,6 @@ public:
 private:
     struct Impl;
     void runEngine(unsigned int keyCode);
-    void restoreForeignWord(uint8_t breakChar);
     void rememberRestoredWord();
     void undoRestoredWord();
     void takeResult(int backs, const unsigned char* utf8, int size);
@@ -67,7 +66,6 @@ private:
         std::u16string shown;
         int screenLength = 0; // restored keys + break char now on screen
     } restored_;
-    bool restoreForeignWords_ = true;
     bool digitsAreKeys_ = false;
     int backs_ = 0;
     int outputLength_ = 0;

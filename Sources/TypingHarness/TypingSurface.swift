@@ -8,6 +8,29 @@ protocol TypingSurface {
     func focus(in window: NSWindow)
     func clear()
     func read() async -> String
+    /// Brings the field's app to the front.
+    func bringToFront(_ window: NSWindow) async
+    /// Key events go to the frontmost app: type only while this is true.
+    func isFrontmost(_ window: NSWindow) -> Bool
+    /// Marks `guard` lost as soon as typing would land somewhere else.
+    func watchFocusLoss(_ guard: FocusGuard)
+}
+
+/// Surfaces inside the harness window.
+extension TypingSurface {
+    func bringToFront(_ window: NSWindow) async {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        try? await Task.sleep(for: .seconds(1.5)) // window, web page and focus settle
+    }
+
+    func isFrontmost(_ window: NSWindow) -> Bool { NSApp.isActive && window.isKeyWindow }
+
+    func watchFocusLoss(_ guard: FocusGuard) {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: nil
+        ) { _ in `guard`.markLost() }
+    }
 }
 
 /// Plain AppKit text view with every automatic substitution turned off, so

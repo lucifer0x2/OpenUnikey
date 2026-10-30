@@ -16,8 +16,7 @@ typedef enum { VK_SWITCH_CONTROL_SHIFT = 0, VK_SWITCH_OPTION_Z = 1 } VKSwitchKey
 // How a word is rewritten in apps whose autocomplete selects text as you type.
 typedef enum {
     VK_AUTOCOMPLETE_NONE = 0,
-    VK_AUTOCOMPLETE_FILLER = 1,      // type a throwaway char first (Safari, Firefox)
-    VK_AUTOCOMPLETE_SELECT_LEFT = 2, // Shift+Left before deleting (Chromium browsers)
+    VK_AUTOCOMPLETE_FILLER = 1,      // type a throwaway char first (browsers)
 } VKAutocompleteFix;
 
 typedef struct {
@@ -42,6 +41,8 @@ void vk_set_autocomplete_fix(VKAutocompleteFix fix);
 // Forgets the word being typed (focus or app change).
 void vk_reset(void);
 void vk_set_mode_callback(VKModeCallback callback, void *context);
+// Diagnostics: logs every key the tap sees (unified log, category "keys").
+void vk_set_key_logging(bool enabled);
 
 // ---- Event tap (needs the Accessibility permission) ----
 bool vk_tap_start(void);

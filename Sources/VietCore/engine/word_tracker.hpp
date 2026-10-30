@@ -6,10 +6,9 @@
 
 namespace vk {
 
-// Mirrors the current word as shown on screen and the keys typed for it, so
-// a foreign word whose doubled letter was used as Telex undo can be restored
-// at its end: "Kissinger" is shown as "Kisinger" because "ss" undoes the
-// tone. ukengine only restores words that still carry a Vietnamese mark.
+// Mirrors the current word as shown on screen and the keys typed for it, so a
+// word ukengine restored at its end can be brought back by Backspace. A
+// doubled key is Telex undo and stays undone: "pussh" is "push", as in UniKey.
 class WordTracker {
 public:
     void reset();
@@ -19,10 +18,6 @@ public:
     // Stop restoring this word (Backspace makes the keys unreliable).
     void invalidate() { valid_ = false; }
 
-    // True when the word should be replaced by its keys: it is plain ASCII,
-    // shorter than the keys, and the undo was not just the last key (typing
-    // "ass" to get "as" stays "as").
-    bool shouldRestore() const;
     bool isValid() const { return valid_; }
     const std::u16string& shown() const { return shown_; }
     int shownLength() const { return (int)shown_.size(); }

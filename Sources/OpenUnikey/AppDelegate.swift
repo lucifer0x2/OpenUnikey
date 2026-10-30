@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         prefs.applyToCore()
+        KeyLogSwitch.applyAtLaunch()
         ModeBridge.install { [weak self] vietnamese in self?.modeSwitchedByHotkey(vietnamese) }
 
         statusItem = StatusItemController(
