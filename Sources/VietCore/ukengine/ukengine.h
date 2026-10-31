@@ -141,6 +141,10 @@ protected:
     int processNoSpellCheck(UkKeyEvent &ev);
     int processWordEnd(UkKeyEvent &ev);
     void synchKeyStrokeBuffer();
+    // OpenUnikey (keystroke_sync.cpp): after Backspace, keep exactly the keys
+    // that still type the word; false leaves the buffer to the upstream code.
+    bool resyncWordKeyStrokes();
+    bool sameWordAs(const UkEngine &other, int wordStart) const;
     bool lastWordHasVnMark() const;
     bool lastWordIsNonVn() const;
 };

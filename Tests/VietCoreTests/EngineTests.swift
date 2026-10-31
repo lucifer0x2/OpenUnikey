@@ -110,6 +110,22 @@ struct TelexTests {
         #expect(typed(keys) == expected)
     }
 
+    /// Backspace must drop every key of the deleted char, not one key per
+    /// char, or the extra keys come back when the word is restored.
+    @Test(arguments: [
+        ("hayx push\u{8}sh\u{8}\u{8}sh ", "hãy push "),
+        ("hayx push\u{8}sh\u{8}\u{8}\u{8}pus\u{8}\u{8}\u{8}ush ", "hãy push "),
+        ("pussh\u{8}\u{8}\u{8}\u{8}push ", "push "),
+        ("push\u{8}sh\u{8}\u{8}\u{8}\u{8}push ", "push "),
+        ("raaxsr\u{8}eesh ", "reesh "), ("tieengs\u{8}k ", "tieensk "),
+        // still Vietnamese: the buffer edits are unchanged
+        ("tieengs\u{8}\u{8}n ", "tiến "),
+        ("vieetj\u{8}\u{8}eetj ", "việt "), ("aaa\u{8}a ", "â "),
+    ])
+    func backspaceKeepsTheKeysOfTheWord(keys: String, expected: String) {
+        #expect(typed(keys) == expected)
+    }
+
     @Test func separatorsStartANewWord() {
         #expect(typed("as.") == "á.")
         #expect(typed("as\ns") == "á\ns")

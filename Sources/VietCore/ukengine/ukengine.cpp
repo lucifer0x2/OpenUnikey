@@ -2542,10 +2542,20 @@ void UkEngine::markChange(int pos) {
 // character buffer (m_buffer) and key stroke buffer in synch
 //----------------------------------------------------------------
 void UkEngine::synchKeyStrokeBuffer() {
+    // OpenUnikey: dropping one key per char is wrong when the char took
+    // several keys (aa, dd, a tone key and the key that undid it), and the
+    // stray keys came back when the word was restored ("pussh", two
+    // Backspaces, "sh" and Space gave "pussh" instead of "push").
+    if (resyncWordKeyStrokes())
+        return;
     // synchronize with key-stroke buffer
     if (m_keyCurrent >= 0)
         m_keyCurrent--;
-    if (m_current >= 0 && m_buffer[m_current].form == vnw_empty) {
+    if (m_current < 0) {
+        // OpenUnikey: the whole word is gone, so are its keys (upstream kept
+        // the extra ones and "pussh", deleted, then "push" gave "ppush").
+        m_keyCurrent = -1;
+    } else if (m_buffer[m_current].form == vnw_empty) {
         // in character buffer, we have reached a word break,
         // so we also need to move key stroke pointer backward to corresponding
         // word break
