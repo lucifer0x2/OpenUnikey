@@ -41,8 +41,17 @@ void vk_set_autocomplete_fix(VKAutocompleteFix fix);
 // Forgets the word being typed (focus or app change).
 void vk_reset(void);
 void vk_set_mode_callback(VKModeCallback callback, void *context);
-// Diagnostics: logs every key the tap sees (unified log, category "keys").
-void vk_set_key_logging(bool enabled);
+
+// ---- Diagnostics: key log (records keystrokes, so opt-in only) ----
+// Logs every key the tap sees in Vietnamese mode and what it did, kept in
+// memory and appended to `path` every 10 minutes and on vk_key_log_stop.
+// Past max_bytes the file becomes path + ".1" and a new one starts.
+void vk_key_log_start(const char *path, uint64_t max_bytes);
+void vk_key_log_stop(void);
+// Writes what is in memory now (blocks until written).
+void vk_key_log_flush(void);
+// Adds a line of context, e.g. the app that became active.
+void vk_key_log_note(const char *text);
 
 // ---- Event tap (needs the Accessibility permission) ----
 bool vk_tap_start(void);

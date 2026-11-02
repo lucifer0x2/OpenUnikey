@@ -13,8 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
     private var statusItem: StatusItemController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        prefs.applyToCore()
         KeyLogSwitch.applyAtLaunch()
+        prefs.applyToCore()
         ModeBridge.install { [weak self] vietnamese in self?.modeSwitchedByHotkey(vietnamese) }
 
         statusItem = StatusItemController(
@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
         )
 
         frontmost.start { [unowned self] in
+            KeyLogSwitch.noteActiveApp(frontmost.currentBundleID)
             updateAutocompleteFix()
             vk_reset()
         }
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
 
     func applicationWillTerminate(_ notification: Notification) {
         tapSupervisor.stop()
+        KeyLogSwitch.stop() // writes what is still in memory
     }
 
     // MARK: MenuActions

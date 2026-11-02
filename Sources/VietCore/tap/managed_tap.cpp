@@ -8,7 +8,10 @@
 #include <algorithm>
 #include <future>
 #include <memory>
+#include <string>
 #include <thread>
+
+#include "tap/key_log.hpp"
 
 namespace vk {
 
@@ -36,7 +39,13 @@ CGEventRef ManagedTap::callback(CGEventTapProxy proxy, CGEventType type, CGEvent
                                 void* user) {
     auto* runtime = static_cast<Runtime*>(user);
     if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
-        if (runtime->guard.allowReenable(TapGuard::Clock::now(), AXIsProcessTrusted())) {
+        const bool reenable = runtime->guard.allowReenable(TapGuard::Clock::now(), AXIsProcessTrusted());
+        // Keys pressed while it was off never reached the engine.
+        logKeyNote(std::string(runtime->owner->name_) +
+                   (type == kCGEventTapDisabledByTimeout ? " disabled by timeout"
+                                                         : " disabled by user input") +
+                   (reenable ? ", enabled again" : ", giving up"));
+        if (reenable) {
             CGEventTapEnable(runtime->port, true);
         } else {
             // stop() joins this thread, so it has to run elsewhere.

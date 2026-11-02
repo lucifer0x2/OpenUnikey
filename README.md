@@ -99,11 +99,13 @@ kill "$PID"
 `--switch-check` kiểm tra Control+Shift, `--mouse-check` kiểm tra nút chuột 4/5.
 `--hid` gửi phím qua tầng HID như bàn phím thật, `--hold MS` giữ mỗi phím một lúc.
 
-Lỗi chỉ gặp khi gõ tay thì bật log phím (tự tắt sau 10 phút) rồi đọc lại:
+Lỗi chỉ gặp khi gõ tay thì bật log phím. Log ghi mọi phím gõ ở chế độ V, giữ trong RAM
+và ghi vào `~/Library/Logs/OpenUnikey/keys.log` mỗi 10 phút và khi Quit (quá 20 MB thì
+chuyển sang `keys.log.1`). Log chạy liên tục tới khi tắt:
 
 ```bash
 defaults write io.github.openunikey keyLogging -bool true   # rồi mở lại app
-/usr/bin/log show --last 10m --predicate 'subsystem == "io.github.openunikey" && category == "keys"'
+defaults delete io.github.openunikey keyLogging             # tắt, rồi mở lại app
 ```
 
 ## Giấy phép
