@@ -5,7 +5,8 @@
 // for light and dark menu bars.
 import AppKit
 
-let points = NSSize(width: 20, height: 16)
+// The same size and corners as the "A" badge: 22×16 pt edge to edge, 5 pt radius.
+let points = NSSize(width: 22, height: 16)
 
 func bitmap(scale: Int) -> NSBitmapImageRep {
     let rep = NSBitmapImageRep(
@@ -18,7 +19,7 @@ func bitmap(scale: Int) -> NSBitmapImageRep {
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let bounds = NSRect(origin: .zero, size: points)
     NSColor.black.set()
-    NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 4, yRadius: 4).fill()
+    NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5).fill()
     NSGraphicsContext.current?.cgContext.setBlendMode(.destinationOut)
     let text = NSAttributedString(string: "V", attributes: [
         .font: NSFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: NSColor.black,
