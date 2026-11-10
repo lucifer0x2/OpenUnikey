@@ -35,7 +35,6 @@ enum SwitchKey: Int, CaseIterable {
 @MainActor
 final class Preferences {
     private enum Key {
-        static let vietnamese = "vietnamese"
         static let inputMethod = "inputMethod"
         static let modernStyle = "modernStyle"
         static let freeMarking = "freeMarking"
@@ -52,7 +51,6 @@ final class Preferences {
 
     init() {
         defaults.register(defaults: [
-            Key.vietnamese: true,
             Key.inputMethod: InputMethod.telex.rawValue,
             Key.modernStyle: false,
             Key.freeMarking: true,
@@ -66,10 +64,6 @@ final class Preferences {
         ])
     }
 
-    var vietnamese: Bool {
-        get { defaults.bool(forKey: Key.vietnamese) }
-        set { defaults.set(newValue, forKey: Key.vietnamese) }
-    }
     var inputMethod: InputMethod {
         get { InputMethod(rawValue: defaults.integer(forKey: Key.inputMethod)) ?? .telex }
         set { defaults.set(newValue.rawValue, forKey: Key.inputMethod) }
@@ -124,6 +118,8 @@ final class Preferences {
         )
         vk_set_options(&options)
         vk_set_switch_key(switchKey == .optionZ ? VK_SWITCH_OPTION_Z : VK_SWITCH_CONTROL_SHIFT)
-        vk_set_vietnamese(vietnamese)
+        // The input method types; the taps only catch the switch key while
+        // another input source is selected.
+        vk_set_vietnamese(false)
     }
 }

@@ -10,8 +10,12 @@ phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. C
 - Kiểu gõ Telex, VNI và Simple Telex; bỏ dấu tự do, bỏ dấu kiểu mới (oà, uý)
 - Xử lý theo cả âm tiết: `dduocwj`, `nguowif` ra `được`, `người`
 - Kiểm tra chính tả và tự khôi phục từ không phải tiếng Việt (`windows`, `text`)
-- Biểu tượng V/E trên thanh menu; nhấp trái để chuyển, nhấp phải để mở menu
-- Phím chuyển V/E: Control + Shift (nhấn rồi thả) hoặc Option + Z
+- Tiếng Việt / tiếng Anh là nguồn nhập của macOS: "OpenUnikey" gõ tiếng Việt, ABC gõ
+  tiếng Anh
+- Biểu tượng V/E trên thanh menu theo nguồn đang chọn; nhấp trái để đổi nguồn, nhấp
+  phải để mở menu
+- Phím đổi nguồn: Control + Shift (nhấn rồi thả) hoặc Option + Z; Control + Space hay
+  phím 🌐 của macOS cũng được
 - Sửa lỗi gợi ý trên thanh địa chỉ trình duyệt bằng ký tự đệm (Chrome, Edge, Arc, Brave,
   Safari, Firefox…)
 - Beta: nút chuột 4/5 chuyển Space phải/trái (bật trong Tuỳ chọn)
@@ -24,8 +28,11 @@ phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. C
 | `Sources/VietCore/ukengine` | ukengine vendored từ fcitx5-unikey (xem README trong thư mục) |
 | `Sources/VietCore/engine` | Lớp bọc ukengine: cấu hình, đổi UTF-8 sang UTF-16 |
 | `Sources/VietCore/tap` | Event tap trên luồng riêng, gửi Backspace và ký tự Unicode |
+| `Sources/VietCore/im` | Xử lý phím cho bộ gõ InputMethodKit, dùng chung engine với tap |
 | `Sources/VietCore/api` | C API (`include/VietCore.h`) cho Swift |
-| `Sources/OpenUnikey` | App thanh menu (AppKit): icon V/E, menu, cài đặt, quyền |
+| `Sources/OpenUnikey` | App thanh menu (AppKit): icon V/E, menu, cài đặt, quyền, phím đổi nguồn khi đang ở ABC |
+| `Sources/OpenUnikeyIM` | Bộ gõ InputMethodKit, cài vào `~/Library/Input Methods` |
+| `Sources/OpenUnikeyShared` | Phần dùng chung giữa app và bộ gõ: danh sách trình duyệt, định danh, đổi nguồn nhập |
 | `Tests/VietCoreTests` | Test gõ Telex/VNI qua C API |
 
 ## Build và chạy
@@ -33,10 +40,24 @@ phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. C
 ```bash
 swift test
 ./scripts/build-app.sh
+./scripts/build-input-method.sh
 open build/OpenUnikey.app
 ```
 
-Lần đầu chạy, cấp quyền tại System Settings → Privacy & Security → Accessibility.
+`build-input-method.sh` cài bộ gõ vào `~/Library/Input Methods`, đăng ký và chọn nó
+làm nguồn nhập. Cấp quyền Accessibility (System Settings → Privacy & Security →
+Accessibility) cho cả `OpenUnikey` và `OpenUnikeyIM`.
+
+### Vì sao gõ bằng bộ gõ InputMethodKit
+
+Có app WindowServer giao phím thẳng, không qua event tap nào (cửa sổ ViewBridge,
+ví dụ bản Claude đóng gói trong ReClaude), nên một event tap không sửa được chữ. Bộ
+gõ InputMethodKit nhận phím ngay trong app đích nên không bị lọt. Nó không dùng
+marked text (không gạch chân): vẫn gửi Backspace + chữ như trước.
+
+Bộ gõ đọc cài đặt của app (kiểu gõ, chính tả...). Khi đang ở nguồn khác (ABC), event
+tap của app không gõ gì, chỉ bắt phím đổi nguồn để chọn lại OpenUnikey. Trong cửa sổ
+ViewBridge tap có thể không thấy phím đó; khi ấy dùng Control + Space hoặc phím 🌐.
 
 ### Giữ quyền Accessibility khi build lại
 

@@ -135,6 +135,12 @@ void TapSession::syncWithSharedState() {
 
 void TapSession::toggleMode() {
     SharedState& state = sharedState();
+    if (VKSwitchCallback callback = state.switchCallback.load()) {
+        engine_.reset();
+        logKeyNote("switch key: input source");
+        callback(state.switchContext.load());
+        return;
+    }
     const bool vietnamese = !state.vietnamese.load();
     state.vietnamese.store(vietnamese);
     engine_.reset();

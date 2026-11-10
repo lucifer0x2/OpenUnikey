@@ -89,6 +89,11 @@ void vk_set_mode_callback(VKModeCallback callback, void* context) {
     sharedState().modeCallback.store(callback);
 }
 
+void vk_set_switch_callback(VKSwitchCallback callback, void* context) {
+    sharedState().switchContext.store(context);
+    sharedState().switchCallback.store(callback);
+}
+
 struct VKEngine {
     vk::Engine engine;
 };

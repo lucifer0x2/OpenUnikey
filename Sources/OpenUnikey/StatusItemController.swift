@@ -1,16 +1,20 @@
 import AppKit
 
-/// Owns the V/E item in the menu bar. Left click switches V/E (like UniKey's
-/// tray icon) when enabled; right click or Control-click opens the menu.
+/// Owns the V/E item in the menu bar: V while OpenUnikey's input source is
+/// selected. Left click switches the input source (like UniKey's tray icon)
+/// when enabled; right click or Control-click opens the menu.
 @MainActor
 final class StatusItemController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let prefs: Preferences
+    private let isVietnamese: () -> Bool
     private let makeMenu: () -> NSMenu
     private let onToggle: () -> Void
 
-    init(prefs: Preferences, makeMenu: @escaping () -> NSMenu, onToggle: @escaping () -> Void) {
+    init(prefs: Preferences, isVietnamese: @escaping () -> Bool,
+         makeMenu: @escaping () -> NSMenu, onToggle: @escaping () -> Void) {
         self.prefs = prefs
+        self.isVietnamese = isVietnamese
         self.makeMenu = makeMenu
         self.onToggle = onToggle
         super.init()
@@ -24,10 +28,10 @@ final class StatusItemController: NSObject {
 
     func refresh() {
         guard let button = statusItem.button else { return }
-        let vietnamese = prefs.vietnamese
+        let vietnamese = isVietnamese()
         button.image = StatusIcon.image(vietnamese: vietnamese)
         let mode = vietnamese ? "Tiếng Việt (\(prefs.inputMethod.title))" : "English"
-        button.toolTip = "OpenUnikey: \(mode). \(prefs.switchKey.symbol) để chuyển V/E."
+        button.toolTip = "OpenUnikey: \(mode). \(prefs.switchKey.symbol) để đổi nguồn nhập."
     }
 
     @objc private func clicked() {

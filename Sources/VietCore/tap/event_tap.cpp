@@ -19,6 +19,7 @@
 
 #include "VietCore.h"
 #include "tap/managed_tap.hpp"
+#include "tap/shared_state.hpp"
 #include "tap/tap_session.hpp"
 
 namespace vk {
@@ -42,6 +43,7 @@ std::mutex& sessionMutex() {
 }
 
 CGEventRef handleKey(CGEventTapProxy proxy, CGEventType type, CGEventRef event) {
+    if (sharedState().inputMethodActive.load(std::memory_order_relaxed)) return event;
     std::lock_guard<std::mutex> lock(sessionMutex());
     return session().handle(proxy, type, event);
 }
