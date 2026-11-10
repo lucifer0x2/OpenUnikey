@@ -39,13 +39,6 @@ bool KeySender::isOwnEvent(CGEventRef event) const {
 
 void KeySender::post(CGEventTapProxy proxy, CGEventRef event) {
     CGEventSetIntegerValueField(event, kCGEventSourceUserData, kSyntheticMarker);
-    if (journaling_ && CGEventGetType(event) == kCGEventKeyDown) {
-        UniChar text[kMaxCharsPerEvent];
-        UniCharCount length = 0;
-        CGEventKeyboardGetUnicodeString(event, kMaxCharsPerEvent, &length, text);
-        journal_.push_back({CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode),
-                            std::u16string(reinterpret_cast<const char16_t*>(text), length)});
-    }
     if (proxy)
         CGEventTapPostEvent(proxy, event);
     else if (untappedPoster)
@@ -89,22 +82,6 @@ void KeySender::replace(CGEventTapProxy proxy, int backs, const uint16_t* chars,
     }
     for (int i = 0; i < backs; i++) postKey(proxy, kBackspaceKey, 0);
     if (count > 0) postText(proxy, chars, count);
-}
-
-// A fresh key down/up with the key's code, flags and text. A copy of the
-// event the input method got (rebuilt from an NSEvent) can get lost on the way.
-void KeySender::retype(CGEventRef original) {
-    UniChar text[kMaxCharsPerEvent];
-    UniCharCount length = 0;
-    CGEventKeyboardGetUnicodeString(original, kMaxCharsPerEvent, &length, text);
-    const auto key = (CGKeyCode)CGEventGetIntegerValueField(original, kCGKeyboardEventKeycode);
-    for (bool down : {true, false}) {
-        CGEventRef event = CGEventCreateKeyboardEvent(source_, key, down);
-        if (!event) return;
-        CGEventSetFlags(event, CGEventGetFlags(original));
-        if (length > 0) CGEventKeyboardSetUnicodeString(event, length, text);
-        post(nullptr, event);
-    }
 }
 
 // Only the key down is swallowed, so only the key down is re-posted; the real

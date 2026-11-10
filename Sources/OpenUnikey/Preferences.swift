@@ -1,11 +1,11 @@
 import Foundation
+import OpenUnikeyShared
 import VietCore
 
-enum InputMethod: Int, CaseIterable {
-    case telex = 0
-    case vni = 1
-    case simpleTelex = 2
+typealias InputMethod = TypingMethod
+typealias SwitchKey = TypingSwitchKey
 
+extension TypingMethod {
     var title: String {
         switch self {
         case .telex: "Telex"
@@ -13,20 +13,9 @@ enum InputMethod: Int, CaseIterable {
         case .simpleTelex: "Simple Telex"
         }
     }
-
-    var core: VKInputMethod {
-        switch self {
-        case .telex: VK_TELEX
-        case .vni: VK_VNI
-        case .simpleTelex: VK_SIMPLE_TELEX
-        }
-    }
 }
 
-enum SwitchKey: Int, CaseIterable {
-    case controlShift = 0
-    case optionZ = 1
-
+extension TypingSwitchKey {
     var title: String { self == .controlShift ? "Control + Shift" : "Option + Z" }
     var symbol: String { self == .controlShift ? "⌃⇧" : "⌥Z" }
 }
@@ -51,49 +40,41 @@ final class Preferences {
 
     init() {
         defaults.register(defaults: [
-            Key.inputMethod: InputMethod.telex.rawValue,
-            Key.modernStyle: false,
-            Key.freeMarking: true,
-            Key.spellCheck: true,
-            Key.autoRestore: true,
-            Key.bracketShortcuts: false,
-            Key.browserFix: true,
-            Key.switchKey: SwitchKey.controlShift.rawValue,
             Key.clickToToggle: true,
             Key.mouseSwitchesSpaces: false,
         ])
     }
 
     var inputMethod: InputMethod {
-        get { InputMethod(rawValue: defaults.integer(forKey: Key.inputMethod)) ?? .telex }
+        get { typingSettings.engine.method }
         set { defaults.set(newValue.rawValue, forKey: Key.inputMethod) }
     }
     var modernStyle: Bool {
-        get { defaults.bool(forKey: Key.modernStyle) }
+        get { typingSettings.engine.modernStyle }
         set { defaults.set(newValue, forKey: Key.modernStyle) }
     }
     var freeMarking: Bool {
-        get { defaults.bool(forKey: Key.freeMarking) }
+        get { typingSettings.engine.freeMarking }
         set { defaults.set(newValue, forKey: Key.freeMarking) }
     }
     var spellCheck: Bool {
-        get { defaults.bool(forKey: Key.spellCheck) }
+        get { typingSettings.engine.spellCheck }
         set { defaults.set(newValue, forKey: Key.spellCheck) }
     }
     var autoRestore: Bool {
-        get { defaults.bool(forKey: Key.autoRestore) }
+        get { typingSettings.engine.autoRestore }
         set { defaults.set(newValue, forKey: Key.autoRestore) }
     }
     var bracketShortcuts: Bool {
-        get { defaults.bool(forKey: Key.bracketShortcuts) }
+        get { typingSettings.engine.bracketShortcuts }
         set { defaults.set(newValue, forKey: Key.bracketShortcuts) }
     }
     var browserFix: Bool {
-        get { defaults.bool(forKey: Key.browserFix) }
+        get { typingSettings.browserFix }
         set { defaults.set(newValue, forKey: Key.browserFix) }
     }
     var switchKey: SwitchKey {
-        get { SwitchKey(rawValue: defaults.integer(forKey: Key.switchKey)) ?? .controlShift }
+        get { typingSettings.switchKey }
         set { defaults.set(newValue.rawValue, forKey: Key.switchKey) }
     }
     var clickToToggle: Bool {
@@ -108,18 +89,15 @@ final class Preferences {
 
     /// Pushes every typing setting to the core.
     func applyToCore() {
-        var options = VKOptions(
-            method: inputMethod.core,
-            freeMarking: freeMarking,
-            modernStyle: modernStyle,
-            spellCheck: spellCheck,
-            autoRestore: autoRestore,
-            bracketShortcuts: bracketShortcuts
-        )
+        let settings = typingSettings
+        var options = settings.engine.coreOptions
         vk_set_options(&options)
-        vk_set_switch_key(switchKey == .optionZ ? VK_SWITCH_OPTION_Z : VK_SWITCH_CONTROL_SHIFT)
+        vk_set_switch_key(settings.switchKey.core)
         // The input method types; the taps only catch the switch key while
         // another input source is selected.
         vk_set_vietnamese(false)
+        TypingSettings.publishChange(from: defaults)
     }
+
+    private var typingSettings: TypingSettings { TypingSettings(defaults: defaults) }
 }

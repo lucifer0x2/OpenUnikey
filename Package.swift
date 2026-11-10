@@ -53,7 +53,8 @@ let package = Package(
             dependencies: ["TypingKit"],
             linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("WebKit")]
         ),
-        .testTarget(name: "VietCoreTests", dependencies: ["VietCore", "TypingKit"]),
+        .testTarget(name: "VietCoreTests", dependencies: ["VietCore", "TypingKit", "OpenUnikeyShared"]),
+        .testTarget(name: "OpenUnikeySharedTests", dependencies: ["OpenUnikeyShared", "VietCore"]),
     ],
     cxxLanguageStandard: .cxx17
 )

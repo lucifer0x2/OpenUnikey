@@ -3,45 +3,61 @@ import OpenUnikeyShared
 import VietCore
 
 /// Reads the settings the menu bar app keeps in its defaults domain and pushes
-/// them into this process's core. Keys and fallbacks mirror Preferences.
+/// them into this process's core. Called only on InputMethodKit's main thread.
+@MainActor
 enum ImSettings {
     private static let maxLogBytes: UInt64 = 20 << 20
 
-    private static var defaults: UserDefaults? {
-        UserDefaults(suiteName: InputMethodIdentity.appDefaultsDomain)
-    }
+    private static let defaults = UserDefaults(suiteName: InputMethodIdentity.appDefaultsDomain)!
+    private static var settings: TypingSettings?
+    private static var cache = TypingSettingsCache()
+    private static var needsReload = true
+    private static var observer: NSObjectProtocol?
 
     /// Selecting the input method means Vietnamese. The switch key selects
     /// the English layout (ABC); the menu bar app's switch key comes back.
     static func startAtLaunch() {
+        observer = DistributedNotificationCenter.default().addObserver(
+            forName: TypingSettings.changedNotification, object: nil, queue: .main
+        ) { _ in MainActor.assumeIsolated { needsReload = true } }
         startKeyLog()
         apply(clientBundleID: nil)
         vk_set_vietnamese(true)
         vk_set_switch_callback(switchKeyPressed, nil)
     }
 
-    static func apply(clientBundleID: String?) {
-        let d = defaults
-        func flag(_ key: String, _ fallback: Bool) -> Bool {
-            d?.object(forKey: key) as? Bool ?? fallback
+    nonisolated static func apply(clientBundleID: String?) {
+        MainActor.assumeIsolated {
+            needsReload = true // Activation also catches edits made with the defaults CLI.
+            refreshOnMainThread(clientBundleID: clientBundleID)
         }
-        var options = VKOptions(
-            method: VKInputMethod(rawValue: UInt32(d?.integer(forKey: "inputMethod") ?? 0)),
-            freeMarking: flag("freeMarking", true),
-            modernStyle: flag("modernStyle", false),
-            spellCheck: flag("spellCheck", true),
-            autoRestore: flag("autoRestore", true),
-            bracketShortcuts: flag("bracketShortcuts", false)
-        )
-        vk_set_options(&options)
-        vk_set_switch_key(d?.integer(forKey: "switchKey") == 1 ? VK_SWITCH_OPTION_Z : VK_SWITCH_CONTROL_SHIFT)
-        let browserFix = flag("browserFix", true)
-        vk_set_autocomplete_fix(browserFix ? Browsers.autocompleteFix(for: clientBundleID) : VK_AUTOCOMPLETE_NONE)
+    }
+
+    /// Before each key, pick up a published change even if this client stays active.
+    /// No defaults I/O or engine reset on the ordinary unchanged-key path.
+    nonisolated static func refreshIfChanged(clientBundleID: String?) {
+        MainActor.assumeIsolated { refreshOnMainThread(clientBundleID: clientBundleID) }
+    }
+
+    private static func refreshOnMainThread(clientBundleID: String?) {
+        if needsReload {
+            defaults.synchronize()
+            settings = TypingSettings(defaults: defaults)
+            needsReload = false
+        }
+        guard let settings else { return }
+        let changes = cache.update(settings, clientBundleID: clientBundleID)
+        if let engine = changes.engine {
+            var options = engine.coreOptions
+            vk_set_options(&options)
+        }
+        if let key = changes.switchKey { vk_set_switch_key(key.core) }
+        if let fix = changes.autocomplete { vk_set_autocomplete_fix(fix) }
     }
 
     /// Same switch as the app's key log, written to keys-im.log next to keys.log.
     private static func startKeyLog() {
-        guard defaults?.bool(forKey: "keyLogging") == true else { return }
+        guard defaults.bool(forKey: "keyLogging") else { return }
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
         let folder = library.appending(path: "Logs/OpenUnikey")
         try? FileManager.default.createDirectory(

@@ -69,11 +69,16 @@ bool vk_tap_running(void);
 void vk_set_input_method_active(bool active);
 
 // ---- Input method (InputMethodKit; main thread only) ----
-// Handles a key down or flags change the input method received. Returns true
-// when the event was consumed and its effect posted instead. The posts need
-// the Accessibility permission, like the tap.
+// A synchronous committed-text replacement. Return false without changing the
+// client if its document range cannot safely be replaced. Never retain chars.
+typedef bool (*VKTextReplacer)(int backs, const uint16_t *chars, int count, void *context);
+// Handles a key down or flags change. Rewrites call replacer before returning,
+// without posting keys or using marked text. A rejected rewrite resets the
+// engine and lets the original physical key through.
+bool vk_im_handle_event_with_replacer(CGEventRef event, VKTextReplacer replacer, void *context);
+// Compatibility entry point with no client: rewrites pass through unchanged.
 bool vk_im_handle_event(CGEventRef event);
-// Forgets the word being typed and stops waiting for posted keys.
+// Forgets the word being typed.
 void vk_im_reset(void);
 // Tests only: the input method's key events go to `poster` instead of the
 // system. The event is released after the call; retain it to keep it.

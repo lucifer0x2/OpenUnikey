@@ -21,6 +21,10 @@ extern "C" {
 
 bool vk_im_handle_event(CGEventRef event) { return imSession().handle(event); }
 
+bool vk_im_handle_event_with_replacer(CGEventRef event, VKTextReplacer replacer, void* context) {
+    return imSession().handle(event, replacer, context);
+}
+
 void vk_im_reset(void) { imSession().reset(); }
 
 void vk_im_set_poster(VKEventPoster poster, void* context) {

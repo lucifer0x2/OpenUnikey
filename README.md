@@ -1,9 +1,9 @@
 # OpenUnikey
 
 Bộ gõ tiếng Việt cho macOS dùng ukengine, engine của x-unikey (Phạm Kim Long) lấy
-từ fcitx5-unikey. Gõ trực tiếp, không gạch chân: app bắt phím bằng `CGEventTap`, xoá
-phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. Cách gửi phím tham khảo
-[OpenKey](https://github.com/tuyenvm/OpenKey).
+từ fcitx5-unikey. Bộ gõ InputMethodKit thay phần chữ cần sửa bằng API của ô nhập,
+không gạch chân (không dùng marked text). App thanh menu dùng `CGEventTap` cho
+phím đổi nguồn khi đang ở ABC và tính năng chuột.
 
 ## Tính năng
 
@@ -31,8 +31,8 @@ phần chữ cần sửa rồi gõ lại bằng ký tự Unicode dựng sẵn. C
 | `Sources/VietCore/im` | Xử lý phím cho bộ gõ InputMethodKit, dùng chung engine với tap |
 | `Sources/VietCore/api` | C API (`include/VietCore.h`) cho Swift |
 | `Sources/OpenUnikey` | App thanh menu (AppKit): icon V/E, menu, cài đặt, quyền, phím đổi nguồn khi đang ở ABC |
-| `Sources/OpenUnikeyIM` | Bộ gõ InputMethodKit, cài vào `~/Library/Input Methods` |
-| `Sources/OpenUnikeyShared` | Phần dùng chung giữa app và bộ gõ: danh sách trình duyệt, định danh, đổi nguồn nhập |
+| `Sources/OpenUnikeyIM` | Bộ gõ InputMethodKit, cài vào `~/Library/Input Methods` hoặc `/Library/Input Methods` |
+| `Sources/OpenUnikeyShared` | Cấu hình gõ, thay chữ, danh sách trình duyệt, định danh và đổi nguồn nhập dùng chung |
 | `Tests/VietCoreTests` | Test gõ Telex/VNI qua C API |
 
 ## Build và chạy
@@ -44,20 +44,47 @@ swift test
 open build/OpenUnikey.app
 ```
 
-`build-input-method.sh` cài bộ gõ vào `~/Library/Input Methods`, đăng ký và chọn nó
-làm nguồn nhập. Cấp quyền Accessibility (System Settings → Privacy & Security →
-Accessibility) cho cả `OpenUnikey` và `OpenUnikeyIM`.
+`build-input-method.sh` đăng ký và chọn bộ gõ sau khi cài. Lần đầu mặc định cài vào
+`~/Library/Input Methods`; nếu đã có bản ở `/Library/Input Methods`, build lại
+giữ vị trí đó (cần sudo). Dùng `./scripts/build-input-method.sh --system` để chọn
+rõ bản system, hoặc `--user` để chuyển về bản user. Script in đường dẫn đã cài và
+chỉ giữ một bản. Cấp quyền Accessibility (System Settings → Privacy & Security →
+Accessibility) cho `OpenUnikey` để dùng phím đổi nguồn và chuột; bộ gõ IMK không
+cần quyền này để thay chữ.
+
+Bản system đã được người dùng xác nhận gõ được sau khi Quit/mở lại app đích.
+Khi đổi vị trí user/system, app đang mở có thể giữ kết nối IMK cũ. Thử đổi ABC →
+OpenUnikey trước; nếu một app vẫn không nhận bộ gõ, Quit rồi mở lại app đó. Nếu
+vẫn kẹt sau khi chuyển vị trí, đăng xuất/đăng nhập lại là bước dự phòng; không cần
+mặc định reboot hay đóng mọi app. Script không tự force-quit các app đích. Xem
+`tasks/password-field-input.md` để biết kết quả thử Secure Input và giới hạn.
 
 ### Vì sao gõ bằng bộ gõ InputMethodKit
 
 Có app WindowServer giao phím thẳng, không qua event tap nào (cửa sổ ViewBridge,
 ví dụ bản Claude đóng gói trong ReClaude), nên một event tap không sửa được chữ. Bộ
-gõ InputMethodKit nhận phím ngay trong app đích nên không bị lọt. Nó không dùng
-marked text (không gạch chân): vẫn gửi Backspace + chữ như trước.
+gõ InputMethodKit nhận phím ngay trong app đích nên không bị lọt. Nó dùng
+`insertText` với vùng thay thế của client, không dùng marked text hay phím xoá
+được gửi bất đồng bộ. Nếu client không cung cấp vùng chữ hợp lệ, bộ gõ cho phím
+gốc đi qua để tránh xoá nhầm.
 
-Bộ gõ đọc cài đặt của app (kiểu gõ, chính tả...). Khi đang ở nguồn khác (ABC), event
+Bộ gõ nhận thay đổi cài đặt của app (kiểu gõ, chính tả, phím đổi nguồn, sửa gợi ý
+trình duyệt) ngay trong client đang dùng; không cần mở lại app để áp dụng tuỳ chọn.
+Chỉ đổi cấu hình engine mới ngắt từ đang gõ. Khi đang ở nguồn khác (ABC), event
 tap của app không gõ gì, chỉ bắt phím đổi nguồn để chọn lại OpenUnikey. Trong cửa sổ
 ViewBridge tap có thể không thấy phím đó; khi ấy dùng Control + Space hoặc phím 🌐.
+
+Khi nâng cấp từ bản chưa đồng bộ tuỳ chọn, build lại cả app thanh menu và bộ gõ:
+
+```bash
+./scripts/build-app.sh
+./scripts/build-input-method.sh --system
+open build/OpenUnikey.app
+```
+
+Lệnh trên dành cho bản system đang dùng; dùng `--user` nếu muốn chọn bản user.
+Đây là thay binary; việc đổi các tuỳ chọn thông thường sau đó không cần chạy lại
+hai script hoặc mở lại app đích.
 
 ### Giữ quyền Accessibility khi build lại
 

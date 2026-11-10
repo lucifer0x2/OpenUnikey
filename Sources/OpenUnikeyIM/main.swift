@@ -16,8 +16,6 @@ else {
 }
 
 ImSettings.startAtLaunch()
-// The rewrite is posted as key events, which needs the Accessibility permission.
-if !CGPreflightPostEventAccess() { _ = CGRequestPostEventAccess() }
 // Clicks move the caret; a passive global monitor needs no permission.
 let clickMonitor = NSEvent.addGlobalMonitorForEvents(
     matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
