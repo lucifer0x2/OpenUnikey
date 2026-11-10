@@ -26,7 +26,9 @@ public:
                                    CGEventRef event);
 
     // `name` names the thread and the log lines; both must outlive the tap.
-    ManagedTap(const char* name, CGEventMask mask, Handler handler, void* context);
+    // A listen-only tap delays no event; its handler's return value is ignored.
+    ManagedTap(const char* name, CGEventTapLocation location, CGEventTapOptions options,
+               CGEventMask mask, Handler handler, void* context);
 
     bool start(); // false without permission, during a cooldown or on failure
     void stop();
@@ -39,6 +41,8 @@ private:
     static void giveUpOnMainQueue(void* self);
 
     const char* name_;
+    CGEventTapLocation location_;
+    CGEventTapOptions options_;
     CGEventMask mask_;
     Handler handler_;
     void* context_;

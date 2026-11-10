@@ -23,7 +23,7 @@ CGEventRef handleMouse(void*, CGEventTapProxy, CGEventType type, CGEventRef even
 }
 
 ManagedTap& mouseTap() {
-    static ManagedTap tap("OpenUnikey.MouseTap",
+    static ManagedTap tap("OpenUnikey.MouseTap", kCGSessionEventTap, kCGEventTapOptionDefault,
                           CGEventMaskBit(kCGEventOtherMouseDown) |
                               CGEventMaskBit(kCGEventOtherMouseUp),
                           handleMouse, nullptr);

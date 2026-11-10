@@ -32,8 +32,10 @@ struct ManagedTap::Runtime {
     }
 };
 
-ManagedTap::ManagedTap(const char* name, CGEventMask mask, Handler handler, void* context)
-    : name_(name), mask_(mask), handler_(handler), context_(context) {}
+ManagedTap::ManagedTap(const char* name, CGEventTapLocation location, CGEventTapOptions options,
+                       CGEventMask mask, Handler handler, void* context)
+    : name_(name), location_(location), options_(options), mask_(mask), handler_(handler),
+      context_(context) {}
 
 CGEventRef ManagedTap::callback(CGEventTapProxy proxy, CGEventType type, CGEventRef event,
                                 void* user) {
@@ -83,8 +85,8 @@ bool ManagedTap::start() {
 
     auto* runtime = new Runtime();
     runtime->owner = this;
-    runtime->port = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap,
-                                     kCGEventTapOptionDefault, mask_, callback, runtime);
+    runtime->port = CGEventTapCreate(location_, kCGHeadInsertEventTap, options_, mask_, callback,
+                                     runtime);
     if (!runtime->port) {
         os_log_error(OS_LOG_DEFAULT, "OpenUnikey: %{public}s could not be created", name_);
         delete runtime;
