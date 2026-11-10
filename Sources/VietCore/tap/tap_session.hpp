@@ -1,5 +1,6 @@
 // OpenUnikey - Vietnamese input for macOS. GPL v2 or later.
-// Per-event logic of the tap: owns the engine and runs only on the tap thread.
+// Per-event logic of the keyboard taps: owns the engine. Not thread-safe: the
+// taps take turns under a lock (see event_tap.cpp).
 #pragma once
 
 #include <ApplicationServices/ApplicationServices.h>
@@ -13,8 +14,15 @@ namespace vk {
 
 class TapSession {
 public:
-    // Returns the event to deliver, or nullptr to swallow it.
+    // Returns the event to deliver, or nullptr to swallow it. A null proxy
+    // posts the rewrite at the session level (the input method has no tap).
     CGEventRef handle(CGEventTapProxy proxy, CGEventType type, CGEventRef event);
+    // Safe without the lock: reads nothing that changes.
+    bool isOwnEvent(CGEventRef event) const { return sender_.isOwnEvent(event); }
+    void setJournaling(bool on) { sender_.setJournaling(on); }
+    std::vector<PostedKey> takePostedKeys() { return sender_.takeJournal(); }
+    // Types a key again at the session level, marked as our own.
+    void retypeKey(CGEventRef event) { sender_.retype(event); }
 
 private:
     CGEventRef handleKeyDown(CGEventTapProxy proxy, CGEventRef event);

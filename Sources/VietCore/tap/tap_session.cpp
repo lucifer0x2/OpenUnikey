@@ -24,18 +24,24 @@ bool readPrintableAscii(CGEventRef event, uint8_t& out) {
     return true;
 }
 
+// Keys typed in E mode never reach the engine, so they stay out of the log.
+bool shouldLogKeys() {
+    return keyLogEnabled() && sharedState().vietnamese.load(std::memory_order_relaxed);
+}
+
 } // namespace
 
 CGEventRef TapSession::handle(CGEventTapProxy proxy, CGEventType type, CGEventRef event) {
     if (sender_.isOwnEvent(event)) {
-        logKeyEvent(event, type, "own", 0, nullptr, 0);
+        if (shouldLogKeys()) logKeyEvent(event, type, "own", 0, nullptr, 0);
         return event;
     }
     switch (type) {
     case kCGEventKeyDown: {
         CGEventRef result = handleKeyDown(proxy, event);
-        logKeyEvent(event, type, result ? "pass" : "rewrite", engine_.backs(), engine_.output(),
-                    engine_.outputLength());
+        if (shouldLogKeys())
+            logKeyEvent(event, type, result ? "pass" : "rewrite", engine_.backs(),
+                        engine_.output(), engine_.outputLength());
         return result;
     }
     case kCGEventFlagsChanged:
@@ -117,16 +123,28 @@ void TapSession::syncWithSharedState() {
     const uint32_t version = state.optionVersion.load(std::memory_order_acquire);
     if (version != appliedOptionVersion_) {
         appliedOptionVersion_ = version;
-        engine_.configure(unpackOptions(state.optionBits.load(std::memory_order_acquire)));
+        const uint32_t bits = state.optionBits.load(std::memory_order_acquire);
+        engine_.configure(unpackOptions(bits));
+        logKeyNote("options " + std::to_string(bits));
     }
-    if (state.resetRequested.exchange(false, std::memory_order_acq_rel)) engine_.reset();
+    if (state.resetRequested.exchange(false, std::memory_order_acq_rel)) {
+        engine_.reset();
+        logKeyNote("engine reset (click, app switch or V/E from the menu)");
+    }
 }
 
 void TapSession::toggleMode() {
     SharedState& state = sharedState();
+    if (VKSwitchCallback callback = state.switchCallback.load()) {
+        engine_.reset();
+        logKeyNote("switch key: input source");
+        callback(state.switchContext.load());
+        return;
+    }
     const bool vietnamese = !state.vietnamese.load();
     state.vietnamese.store(vietnamese);
     engine_.reset();
+    logKeyNote(vietnamese ? "mode V (switch key)" : "mode E (switch key)");
     if (VKModeCallback callback = state.modeCallback.load())
         callback(vietnamese, state.modeContext.load());
 }

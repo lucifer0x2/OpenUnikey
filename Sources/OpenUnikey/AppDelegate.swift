@@ -1,4 +1,5 @@
 import AppKit
+import OpenUnikeyShared
 import VietCore
 
 /// Wires the settings, the menu bar item and the core event tap together.
@@ -10,41 +11,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
         onChange: { [weak self] in self?.statusItem?.refresh() }
     )
     private let frontmost = FrontmostAppObserver()
+    private let inputSource = InputSourceObserver()
     private var statusItem: StatusItemController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        prefs.applyToCore()
         KeyLogSwitch.applyAtLaunch()
-        ModeBridge.install { [weak self] vietnamese in self?.modeSwitchedByHotkey(vietnamese) }
+        prefs.applyToCore()
+        SwitchBridge.install { [weak self] in self?.toggleVietnamese() }
 
         statusItem = StatusItemController(
             prefs: prefs,
+            isVietnamese: { [inputSource] in inputSource.isVietnamese },
             makeMenu: { [unowned self] in
-                MenuBuilder(prefs: prefs, accessibilityGranted: tapSupervisor.isTrusted,
+                MenuBuilder(prefs: prefs, vietnamese: inputSource.isVietnamese,
+                            accessibilityGranted: tapSupervisor.isTrusted,
                             launchAtLogin: LoginItem.isEnabled, actions: self).build()
             },
             onToggle: { [unowned self] in toggleVietnamese() }
         )
 
         frontmost.start { [unowned self] in
+            KeyLogSwitch.noteActiveApp(frontmost.currentBundleID)
             updateAutocompleteFix()
             vk_reset()
         }
         updateAutocompleteFix()
+        inputSource.start { [weak self] in self?.statusItem?.refresh() }
 
         tapSupervisor.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         tapSupervisor.stop()
+        KeyLogSwitch.stop() // writes what is still in memory
     }
 
     // MARK: MenuActions
 
+    /// The input source change comes back through InputSourceObserver.
     func toggleVietnamese() {
-        prefs.vietnamese.toggle()
-        vk_set_vietnamese(prefs.vietnamese)
-        statusItem?.refresh()
+        if !InputSources.toggle() { NSSound.beep() } // input method not installed
     }
 
     func preferencesChanged() {
@@ -78,32 +84,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuActions {
 
     // MARK: Private
 
-    private func modeSwitchedByHotkey(_ vietnamese: Bool) {
-        prefs.vietnamese = vietnamese
-        statusItem?.refresh()
-    }
-
     private func updateAutocompleteFix() {
         vk_set_autocomplete_fix(prefs.browserFix ? frontmost.autocompleteFix : VK_AUTOCOMPLETE_NONE)
     }
 }
 
-/// Routes the core's C mode callback (event tap thread) to the main actor.
+/// Routes the core's C switch callback (event tap thread) to the main actor.
 @MainActor
-enum ModeBridge {
-    fileprivate static var handler: ((Bool) -> Void)?
+enum SwitchBridge {
+    fileprivate static var handler: (() -> Void)?
 
-    static func install(_ handler: @escaping (Bool) -> Void) {
+    static func install(_ handler: @escaping () -> Void) {
         self.handler = handler
-        vk_set_mode_callback(modeChangedOnTapThread, nil)
+        vk_set_switch_callback(switchKeyOnTapThread, nil)
     }
 }
 
 /// Called by the core on the event tap thread. It must stay nonisolated: a
-/// closure written inside the @MainActor ModeBridge inherits main-actor
+/// closure written inside the @MainActor SwitchBridge inherits main-actor
 /// isolation, and Swift 6 traps when it runs on another thread.
-private func modeChangedOnTapThread(_ vietnamese: Bool, _ context: UnsafeMutableRawPointer?) {
+private func switchKeyOnTapThread(_ context: UnsafeMutableRawPointer?) {
     DispatchQueue.main.async {
-        MainActor.assumeIsolated { ModeBridge.handler?(vietnamese) }
+        MainActor.assumeIsolated { SwitchBridge.handler?() }
     }
 }
