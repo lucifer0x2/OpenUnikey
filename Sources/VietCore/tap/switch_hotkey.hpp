@@ -1,5 +1,6 @@
 // OpenUnikey - Vietnamese input for macOS. GPL v2 or later.
-// Detects the V/E switch key: a lone Control+Shift press, or Option+Z.
+// Detects the V/E switch key: Control+Shift pressed and released with no other
+// key or modifier in between, or Option+Z.
 #pragma once
 
 #include <ApplicationServices/ApplicationServices.h>
@@ -17,6 +18,7 @@ public:
 
 private:
     bool armed_ = false;
+    bool spoiled_ = false; // another key or modifier joined since all were up
 };
 
 } // namespace vk

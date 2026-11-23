@@ -8,7 +8,10 @@
 #include <algorithm>
 #include <future>
 #include <memory>
+#include <string>
 #include <thread>
+
+#include "tap/key_log.hpp"
 
 namespace vk {
 
@@ -29,14 +32,22 @@ struct ManagedTap::Runtime {
     }
 };
 
-ManagedTap::ManagedTap(const char* name, CGEventMask mask, Handler handler, void* context)
-    : name_(name), mask_(mask), handler_(handler), context_(context) {}
+ManagedTap::ManagedTap(const char* name, CGEventTapLocation location, CGEventTapOptions options,
+                       CGEventMask mask, Handler handler, void* context)
+    : name_(name), location_(location), options_(options), mask_(mask), handler_(handler),
+      context_(context) {}
 
 CGEventRef ManagedTap::callback(CGEventTapProxy proxy, CGEventType type, CGEventRef event,
                                 void* user) {
     auto* runtime = static_cast<Runtime*>(user);
     if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
-        if (runtime->guard.allowReenable(TapGuard::Clock::now(), AXIsProcessTrusted())) {
+        const bool reenable = runtime->guard.allowReenable(TapGuard::Clock::now(), AXIsProcessTrusted());
+        // Keys pressed while it was off never reached the engine.
+        logKeyNote(std::string(runtime->owner->name_) +
+                   (type == kCGEventTapDisabledByTimeout ? " disabled by timeout"
+                                                         : " disabled by user input") +
+                   (reenable ? ", enabled again" : ", giving up"));
+        if (reenable) {
             CGEventTapEnable(runtime->port, true);
         } else {
             // stop() joins this thread, so it has to run elsewhere.
@@ -74,8 +85,8 @@ bool ManagedTap::start() {
 
     auto* runtime = new Runtime();
     runtime->owner = this;
-    runtime->port = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap,
-                                     kCGEventTapOptionDefault, mask_, callback, runtime);
+    runtime->port = CGEventTapCreate(location_, kCGHeadInsertEventTap, options_, mask_, callback,
+                                     runtime);
     if (!runtime->port) {
         os_log_error(OS_LOG_DEFAULT, "OpenUnikey: %{public}s could not be created", name_);
         delete runtime;

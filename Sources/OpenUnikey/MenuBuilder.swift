@@ -15,6 +15,7 @@ protocol MenuActions: AnyObject {
 @MainActor
 struct MenuBuilder {
     let prefs: Preferences
+    let vietnamese: Bool
     let accessibilityGranted: Bool
     let launchAtLogin: Bool
     unowned let actions: MenuActions
@@ -23,10 +24,10 @@ struct MenuBuilder {
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.addItem(ActionMenuItem("Gõ tiếng Việt", symbol: "keyboard",
-                                    checked: prefs.vietnamese) { [actions] in
+                                    checked: vietnamese) { [actions] in
             actions.toggleVietnamese()
         })
-        menu.addItem(.hint("Phím chuyển V/E: \(prefs.switchKey.symbol)"))
+        menu.addItem(.hint("Phím chuyển nguồn nhập: \(prefs.switchKey.symbol)"))
         menu.addItem(.separator())
         menu.addItem(inputMethodMenu())
         menu.addItem(optionsMenu())

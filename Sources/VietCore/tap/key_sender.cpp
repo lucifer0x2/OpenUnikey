@@ -13,7 +13,16 @@ constexpr UniChar kAutocompleteFiller = 0x202F; // narrow no-break space
 constexpr int kMaxCharsPerEvent = 16;   // longer strings are split
 constexpr int64_t kSyntheticMarker = 0x564B4F55; // "VKOU"
 
+// Where events posted without a tap go; tests swap in a recorder.
+VKEventPoster untappedPoster = nullptr;
+void* untappedPosterContext = nullptr;
+
 } // namespace
+
+void setUntappedPoster(VKEventPoster poster, void* context) {
+    untappedPoster = poster;
+    untappedPosterContext = context;
+}
 
 KeySender::KeySender()
     : source_(CGEventSourceCreate(kCGEventSourceStatePrivate)),
@@ -30,7 +39,12 @@ bool KeySender::isOwnEvent(CGEventRef event) const {
 
 void KeySender::post(CGEventTapProxy proxy, CGEventRef event) {
     CGEventSetIntegerValueField(event, kCGEventSourceUserData, kSyntheticMarker);
-    CGEventTapPostEvent(proxy, event);
+    if (proxy)
+        CGEventTapPostEvent(proxy, event);
+    else if (untappedPoster)
+        untappedPoster(event, untappedPosterContext);
+    else
+        CGEventPost(kCGSessionEventTap, event);
     CFRelease(event);
 }
 

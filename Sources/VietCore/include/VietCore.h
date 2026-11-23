@@ -3,6 +3,7 @@
 #ifndef VIETCORE_H
 #define VIETCORE_H
 
+#include <CoreGraphics/CoreGraphics.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -30,6 +31,8 @@ typedef struct {
 
 // Called on the event tap thread when the switch key toggles V/E.
 typedef void (*VKModeCallback)(bool vietnamese, void *context);
+// Called on the thread that saw the switch key, instead of toggling V/E.
+typedef void (*VKSwitchCallback)(void *context);
 
 // ---- Global input state (safe to call from any thread) ----
 void vk_set_options(const VKOptions *options);
@@ -41,13 +44,46 @@ void vk_set_autocomplete_fix(VKAutocompleteFix fix);
 // Forgets the word being typed (focus or app change).
 void vk_reset(void);
 void vk_set_mode_callback(VKModeCallback callback, void *context);
-// Diagnostics: logs every key the tap sees (unified log, category "keys").
-void vk_set_key_logging(bool enabled);
+// With a callback, the switch key leaves V/E alone and calls it: the app and the
+// input method switch the macOS input source instead. NULL restores V/E.
+void vk_set_switch_callback(VKSwitchCallback callback, void *context);
+
+// ---- Diagnostics: key log (records keystrokes, so opt-in only) ----
+// Logs every key the tap sees in Vietnamese mode and what it did, kept in
+// memory and appended to `path` every 10 minutes and on vk_key_log_stop.
+// Past max_bytes the file becomes path + ".1" and a new one starts.
+void vk_key_log_start(const char *path, uint64_t max_bytes);
+void vk_key_log_stop(void);
+// Writes what is in memory now (blocks until written).
+void vk_key_log_flush(void);
+// Adds a line of context, e.g. the app that became active.
+void vk_key_log_note(const char *text);
 
 // ---- Event tap (needs the Accessibility permission) ----
 bool vk_tap_start(void);
 void vk_tap_stop(void);
 bool vk_tap_running(void);
+
+// While OpenUnikey's input method is the selected input source the taps let
+// every key through, so the two never rewrite the same word.
+void vk_set_input_method_active(bool active);
+
+// ---- Input method (InputMethodKit; main thread only) ----
+// A synchronous committed-text replacement. Return false without changing the
+// client if its document range cannot safely be replaced. Never retain chars.
+typedef bool (*VKTextReplacer)(int backs, const uint16_t *chars, int count, void *context);
+// Handles a key down or flags change. Rewrites call replacer before returning,
+// without posting keys or using marked text. A rejected rewrite resets the
+// engine and lets the original physical key through.
+bool vk_im_handle_event_with_replacer(CGEventRef event, VKTextReplacer replacer, void *context);
+// Compatibility entry point with no client: rewrites pass through unchanged.
+bool vk_im_handle_event(CGEventRef event);
+// Forgets the word being typed.
+void vk_im_reset(void);
+// Tests only: the input method's key events go to `poster` instead of the
+// system. The event is released after the call; retain it to keep it.
+typedef void (*VKEventPoster)(CGEventRef event, void *context);
+void vk_im_set_poster(VKEventPoster poster, void *context);
 
 // ---- Beta: mouse side buttons switch Spaces (button 4 right, button 5 left) ----
 // A separate tap that only sees "other" mouse buttons; same permission.

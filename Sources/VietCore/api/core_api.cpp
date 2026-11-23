@@ -3,6 +3,7 @@
 
 #include "engine/engine.hpp"
 #include "tap/key_log.hpp"
+#include "tap/key_log_file.hpp"
 #include "tap/shared_state.hpp"
 
 namespace vk {
@@ -62,6 +63,7 @@ void vk_set_options(const VKOptions* options) {
 void vk_set_vietnamese(bool enabled) {
     sharedState().vietnamese.store(enabled);
     sharedState().resetRequested.store(true);
+    vk::logKeyNote(enabled ? "mode V (menu or launch)" : "mode E (menu or launch)");
 }
 
 bool vk_is_vietnamese(void) { return sharedState().vietnamese.load(); }
@@ -72,11 +74,24 @@ void vk_set_autocomplete_fix(VKAutocompleteFix fix) { sharedState().autocomplete
 
 void vk_reset(void) { sharedState().resetRequested.store(true); }
 
-void vk_set_key_logging(bool enabled) { vk::setKeyLogEnabled(enabled); }
+void vk_key_log_start(const char* path, uint64_t max_bytes) {
+    vk::keyLogFile().start(path, max_bytes);
+}
+
+void vk_key_log_stop(void) { vk::keyLogFile().stop(); }
+
+void vk_key_log_flush(void) { vk::keyLogFile().flush(); }
+
+void vk_key_log_note(const char* text) { vk::logKeyNote(text); }
 
 void vk_set_mode_callback(VKModeCallback callback, void* context) {
     sharedState().modeContext.store(context);
     sharedState().modeCallback.store(callback);
+}
+
+void vk_set_switch_callback(VKSwitchCallback callback, void* context) {
+    sharedState().switchContext.store(context);
+    sharedState().switchCallback.store(callback);
 }
 
 struct VKEngine {

@@ -1,5 +1,7 @@
 // OpenUnikey - Vietnamese input for macOS. GPL v2 or later.
 // Posts the synthetic Backspace and Unicode key events that rewrite a word.
+// With a tap proxy they go in right after the tapped key; tests can replace
+// session-level posting. InputMethodKit uses committed client replacements.
 // The sending scheme follows OpenKey (github.com/tuyenvm/OpenKey).
 #pragma once
 
@@ -10,6 +12,9 @@
 
 namespace vk {
 
+// Replaces CGEventPost for events posted without a tap (tests).
+void setUntappedPoster(VKEventPoster poster, void* context);
+
 class KeySender {
 public:
     KeySender();
@@ -19,7 +24,6 @@ public:
 
     // True for events this sender posted, so the tap lets them through.
     bool isOwnEvent(CGEventRef event) const;
-
     // Deletes `backs` characters then types `chars`.
     void replace(CGEventTapProxy proxy, int backs, const uint16_t* chars, int count,
                  VKAutocompleteFix fix);

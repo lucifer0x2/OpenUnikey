@@ -19,6 +19,11 @@ struct SharedState {
     std::atomic<int> switchKey{VK_SWITCH_CONTROL_SHIFT};
     std::atomic<VKModeCallback> modeCallback{nullptr};
     std::atomic<void*> modeContext{nullptr};
+    std::atomic<VKSwitchCallback> switchCallback{nullptr};
+    std::atomic<void*> switchContext{nullptr};
+    // OpenUnikey's input method is the selected input source: it types, the
+    // taps only let keys through.
+    std::atomic<bool> inputMethodActive{false};
 };
 
 SharedState& sharedState();
